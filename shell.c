@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
 				{
 					arg[t] = specific_parsed[t];
 				}
-
+				
 				if(pid < 0)
 				{
 					perror("ERROR: in forking new process\n");
@@ -213,14 +213,20 @@ int main(int argc, char *argv[])
 					ret = execvp(arg[0], arg);
 					if(ret < 0)
 					{
-						perror("ERROR : in execlp()\n");
+						perror("ERROR : in execvp()\n");
 						exit(1);
 					}
 					exit(0);
 				}
 
+				for(t=0;t<specific_counter;t++)
+				{
+					arg[t] = '\0';
+				}
+
 				wait();
 			}
+
 		}
 	}
 	return 0;
