@@ -10,7 +10,8 @@
 #include<stdbool.h>
 #include<sys/stat.h>
 #include<signal.h>
-#include <fcntl.h>
+#include<fcntl.h>
+#include<sys/wait.h>
 
 /////DECLARE STRUCTS HERE/////
 typedef struct {
@@ -37,7 +38,7 @@ typedef struct {
 /////DECLARE GLOBAL VARIABLES/////
 Global instance;
 Redirect re;
-Background bg;0
+Background bg;
 #define TRUE 1
 #define FALSE 0
 /////Need to check for background process.
@@ -71,6 +72,7 @@ void resetExistsBg()
 {
 	bg.exists_in_command = FALSE;
 }
+/////Ending, Background process/////
 /////Need to check for redirection in command given.
 /////***** RESET THESE AFTER EACH COMMAND /////
 ///// Functions specific to redirections goes here
@@ -349,6 +351,7 @@ int main(int argc, char *argv[])
 
 			else
 			{
+
 				pid_t pid;
 				int status;
 
@@ -447,6 +450,7 @@ int main(int argc, char *argv[])
 						}
 					}
 					
+
 					int ret;
 					ret = execvp(arg[0], arg);
 					if(ret < 0)
@@ -456,20 +460,16 @@ int main(int argc, char *argv[])
 					}
 					exit(0);
 				}
-
 				for(t=0;t<specific_counter;t++)
 				{
 					arg[t] = '\0';
 				}
-
 				wait();
 			}
-			
 			//Reset bg.exists_in_command.
 			resetExistBg();
 			//Reset redirection instance everytime.
 			resetRe();
-
 		}
 	}
 	return 0;
