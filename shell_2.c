@@ -29,11 +29,48 @@ typedef struct {
 	char file_output[200];
 }Redirect;
 
+typedef struct {
+	int counter;
+	int indexes[200];
+	bool exists_in_command;
+}Background;
 /////DECLARE GLOBAL VARIABLES/////
 Global instance;
 Redirect re;
+Background bg;0
 #define TRUE 1
 #define FALSE 0
+/////Need to check for background process.
+/////If there are background processes
+/////Maintian them in indexes.
+/////**** DONOT RESET, INITITATE FOR AN INSTANCE OF SHELL /////
+///// Functions specific to background processes goes herer////
+///// Just Reset exists each time /////
+void initializeBg()
+{
+	bg.counter = 0;
+	bg.exists_in_command = FALSE;
+	int i;
+	for(i=0;i<200;i++)
+	{
+		bg.indexes = 0;
+	}
+}
+void checkBg(char command_parsed[100][100], int command_counter)
+{
+	int i;
+	for(i=0;i<command_counter;i++)
+	{
+		if(strcpy(command_parsed[i], "&")==0)
+		{
+			bg.exists_in_command = TRUE;
+		}
+	}
+}
+void resetExistsBg()
+{
+	bg.exists_in_command = FALSE;
+}
 /////Need to check for redirection in command given.
 /////***** RESET THESE AFTER EACH COMMAND /////
 ///// Functions specific to redirections goes here
@@ -255,6 +292,8 @@ int main(int argc, char *argv[])
 	while(1)
 	{
 		generateShellPrompt();
+		
+		initializeBg();
 
 		gets(command);
 
@@ -294,6 +333,9 @@ int main(int argc, char *argv[])
 			checkReIn(specific_parsed, specific_counter);
 			checkReOut(specific_parsed, specific_counter);
 			checkAppend(specific_parsed, specific_counter);
+			
+			//Check Background process.
+			checkBg(specific_parsed, specific_counter);
 
 			if(strcmp(specific_parsed[0], "cd")==0 || strcmp(specific_parsed[0], "echo")==0 || strcmp(specific_parsed[0],"pwd")==0)
 			{
@@ -422,7 +464,9 @@ int main(int argc, char *argv[])
 
 				wait();
 			}
-		
+			
+			//Reset bg.exists_in_command.
+			resetExistBg();
 			//Reset redirection instance everytime.
 			resetRe();
 
