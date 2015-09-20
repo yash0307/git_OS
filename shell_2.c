@@ -23,6 +23,8 @@ typedef struct {
 	char command[200];
 	bool r_in;
 	bool r_out;
+	bool r_in_append;
+	bool r_out_append;
 	char file_input[200];
 	char file_output[200];
 }Redirect;
@@ -40,18 +42,18 @@ void initializeRe()
 	strcpy(re.command,"");
 	re.r_in = FALSE;
 	re.r_out = FALSE;
+	re.r_in_append = FALSE;
+	re.r_out_append = FALSE;
 	strcpy(re.file_input,"");
 	strcpy(re.file_output,"");
-}
-void makeReInstance()
-{
-
 }
 void resetRe()
 {
 	strcpy(re.command,"");
 	re.r_in = FALSE;
 	re.r_out = FALSE;
+	re.r_in_append = FALSE;
+	re.r_out_append = FALSE;
 	strcpy(re.file_input,"");
 	strcpy(re.file_output,"");
 }
@@ -105,6 +107,22 @@ void checkReOut(char command_parsed[100][100], int command_counter)
 					return;
 				}
 			}
+		}
+	}
+}
+
+void checkAppend(char command_parsed[100][100], int command_counter)
+{
+	int i;
+	for(i=0;i<command_counter;i++)
+	{
+		if(strcmp(command_parsed[i],">>")==0)
+		{
+			re.r_out_append = TRUE;
+		}
+		if(strcmp(command_parsed[i], "<<")==0)
+		{
+			re.r_in_append = TRUE;
 		}
 	}
 }
@@ -275,6 +293,8 @@ int main(int argc, char *argv[])
 			//Check if there is redirection in command.
 			checkReIn(specific_parsed, specific_counter);
 			checkReOut(specific_parsed, specific_counter);
+			checkAppend(specific_parsed, specific_counter);
+
 			if(strcmp(specific_parsed[0], "cd")==0 || strcmp(specific_parsed[0], "echo")==0 || strcmp(specific_parsed[0],"pwd")==0)
 			{
 				executeBuiltInCommand(specific_parsed);
@@ -349,10 +369,19 @@ int main(int argc, char *argv[])
 								break;
 							}
 						}
-						int fd_out = creat(re.file_output, 0644);
-						if(fd_out < 0)
+
+						int fd_out;
+						if(re.r_out_append==FALSE)
 						{
-							perror("ERROR : can't create output file\n");
+							fd_out = creat(re.file_output, 0644);
+							if(fd_out<0)
+								perror("ERROR : can't append in Output File\n");
+						}
+						else if(re.r_out_append==TRUE)
+						{
+							fd_out = open(re.file_output, O_WRONLY | O_APPEND);
+							if(fd_out <0)
+							perror("ERROR : can't create Output file\n");
 						}
 						dup2(fd_out, STDOUT_FILENO);
 						close(fd_out);
@@ -393,7 +422,7 @@ int main(int argc, char *argv[])
 
 				wait();
 			}
-
+		
 			//Reset redirection instance everytime.
 			resetRe();
 
