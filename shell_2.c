@@ -7,7 +7,10 @@
 #include<unistd.h>
 #include<sys/utsname.h>
 #include<sys/types.h>
-
+#include<stdbool.h>
+#include<sys/stat.h>
+#include<signal.h>
+#include <fcntl.h>
 
 /////DECLARE STRUCTS HERE/////
 typedef struct {
@@ -16,11 +19,96 @@ typedef struct {
 	char system_name[200];
 }Global;
 
+typedef struct {
+	char command[200];
+	bool r_in;
+	bool r_out;
+	char file_input[200];
+	char file_output[200];
+}Redirect;
+
 /////DECLARE GLOBAL VARIABLES/////
 Global instance;
+Redirect re;
 #define TRUE 1
 #define FALSE 0
+/////Need to check for redirection in command given.
+/////***** RESET THESE AFTER EACH COMMAND /////
+///// Functions specific to redirections goes here
+void initializeRe()
+{
+	strcpy(re.command,"");
+	re.r_in = FALSE;
+	re.r_out = FALSE;
+	strcpy(re.file_input,"");
+	strcpy(re.file_output,"");
+}
+void makeReInstance()
+{
 
+}
+void resetRe()
+{
+	strcpy(re.command,"");
+	re.r_in = FALSE;
+	re.r_out = FALSE;
+	strcpy(re.file_input,"");
+	strcpy(re.file_output,"");
+}
+void checkReIn(char command_parsed[100][100], int command_counter)
+{
+	int i;
+	for(i=0;i<command_counter;i++)
+	{
+		int cmd_len = strlen(command_parsed[i]);
+		int j;
+		for(j=0;j<cmd_len;j++)
+		{
+			if(command_parsed[i][j]=='<' || strcmp(command_parsed[i],"<<")==0)
+			{
+				if(i < command_counter-1)
+				{
+					re.r_in = TRUE;
+					strcpy(re.file_input, command_parsed[i+1]);
+					return;
+				}
+				else
+				{
+					printf("Enter Valid Input File\n");
+					return;
+				}
+			}
+		}
+	}
+}
+
+void checkReOut(char command_parsed[100][100], int command_counter)
+{
+	int i;
+	for(i=0;i<command_counter;i++)
+	{
+		int cmd_len = strlen(command_parsed[i]);
+		int j;
+		for(j=0;j<cmd_len;j++)
+		{
+			if(command_parsed[i][j]=='>' || strcmp(command_parsed[i],">>")==0)
+			{
+				if(i < command_counter-1)
+				{
+					re.r_out = TRUE;
+					strcpy(re.file_output, command_parsed[i+1]);
+					return;
+				}
+				else
+				{
+					printf("Enter Valid Output file\n");
+					return;
+				}
+			}
+		}
+	}
+}
+/////END OF REDIRECTION FUNCTIONS /////
 /////This function gets user name, system name and starting working directory.
 void getInstanceDetails()
 {
@@ -144,6 +232,8 @@ int main(int argc, char *argv[])
 
 	getInstanceDetails();
 
+	initializeRe();
+
 	while(1)
 	{
 		generateShellPrompt();
@@ -182,6 +272,9 @@ int main(int argc, char *argv[])
 				specific_token = strtok(NULL, specific_parm);
 			}
 
+			//Check if there is redirection in command.
+			checkReIn(specific_parsed, specific_counter);
+			checkReOut(specific_parsed, specific_counter);
 			if(strcmp(specific_parsed[0], "cd")==0 || strcmp(specific_parsed[0], "echo")==0 || strcmp(specific_parsed[0],"pwd")==0)
 			{
 				executeBuiltInCommand(specific_parsed);
@@ -196,16 +289,25 @@ int main(int argc, char *argv[])
 			{
 				pid_t pid;
 				int status;
-				
+
 				pid = fork();
-				
+
 				int t;
 				char *arg[100];
-				for(t=0;t<specific_counter;t++)
+
+				int in_cnt=1000;
+				int out_cnt=1000;
+
+				//If re.r_in is False and re.r_out is false then
+				//give values to arg here itself.
+				if(re.r_in==FALSE && re.r_out==FALSE)
 				{
-					arg[t] = specific_parsed[t];
+					for(t=0;t<specific_counter;t++)
+					{
+						arg[t] = specific_parsed[t];
+					}
 				}
-				
+
 				if(pid < 0)
 				{
 					perror("ERROR: in forking new process\n");
@@ -214,6 +316,66 @@ int main(int argc, char *argv[])
 
 				else if(pid==0)
 				{
+					//check for redirection input//
+					if(re.r_in)
+					{
+						int in_i;
+						for(in_i=0 ; in_i<specific_counter ; in_i++)
+						{
+							if(strcmp(specific_parsed[in_i],"<")==0 || strcmp(specific_parsed[in_i],"<<")==0)
+							{
+								in_cnt = in_i;
+								break;
+							}
+						}
+						int fd_in = open(re.file_input, O_RDONLY, 0);
+						if(fd_in < 0)
+						{
+							perror("ERROR : can't open input file\n");
+						}
+						dup2(fd_in, STDIN_FILENO);
+						close(fd_in);
+					}
+
+					//check for redirection output//
+					if(re.r_out)
+					{
+						int out_i;
+						for(out_i=0 ; out_i<specific_counter ; out_i++)
+						{
+							if(strcmp(specific_parsed[out_i],">")==0 || strcmp(specific_parsed[out_i],">>")==0)
+							{
+								out_cnt = out_i;
+								break;
+							}
+						}
+						int fd_out = creat(re.file_output, 0644);
+						if(fd_out < 0)
+						{
+							perror("ERROR : can't create output file\n");
+						}
+						dup2(fd_out, STDOUT_FILENO);
+						close(fd_out);
+					}
+					//If both re.r_in and re.r_out are true.
+					if(re.r_in==TRUE || re.r_out==TRUE)
+					{
+						if(in_cnt > out_cnt)
+						{
+							for(t=0;t<out_cnt;t++)
+							{
+								arg[t] = specific_parsed[t];
+							}
+						}
+						else if(in_cnt < out_cnt)
+						{
+							for(t=0;t<in_cnt;t++)
+							{
+								arg[t] = specific_parsed[t];
+							}
+						}
+					}
+					
 					int ret;
 					ret = execvp(arg[0], arg);
 					if(ret < 0)
@@ -231,6 +393,9 @@ int main(int argc, char *argv[])
 
 				wait();
 			}
+
+			//Reset redirection instance everytime.
+			resetRe();
 
 		}
 	}
