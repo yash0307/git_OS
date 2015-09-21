@@ -12,8 +12,8 @@
 #include<signal.h>
 #include<fcntl.h>
 #include<sys/wait.h>
-#include <signal.h>
-/////////////////////////////////////////////////////////////////
+#include<signal.h>
+//////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////
 /////////////////////STRUCTS SECTION START HERE///////////////////
 //////////////////////////////////////////////////////////////////
@@ -59,6 +59,44 @@ Redirect re;
 Background bg;
 #define TRUE 1
 #define FALSE 0
+/////User Defined commands goes here /////
+/////FOllowing are the commands /////
+/////jobs, kjob, fg, overkill, quit, /////
+void userDefinedCommands(char command_parsed[100][100])
+{
+	if(strcmp(command_parsed[0],"jobs")==0)
+	{
+		int i;
+		for(i=0;i<bg.counter;i++)
+		{
+			FILE *fp;
+			char ch;
+			char temp_arr[100];
+			char file_name[100];
+			//Print name of process
+			sprintf(temp_arr, "%d", bg.indexes[i]);
+			strcpy(file_name,"/proc/");
+			strcat(file_name,temp_arr);
+			strcat(file_name,"/comm");
+			fp = fopen(file_name,"r");
+			if( fp == NULL )
+			{
+				perror("Error while opening the file.\n");
+			}
+			else
+			{
+				while( ( ch = fgetc(fp) ) != EOF )
+				{
+				      	printf("%c",ch);
+				}
+			}
+			fclose(fp);
+			printf("\n");
+			//Print Pid of process//
+			printf("PID : %d\n", bg.indexes[i]);
+		}
+	}
+}
 /////Own Kill Child handler /////
 /////Takes input as a [killchild pid]
 /////Checks if pid exists in processes raised by shell
@@ -82,6 +120,20 @@ void killChildHandler(char command_parsed[100][100])
 			else if(ret==0)
 			{
 				printf("Killed Child Process with pid : %d\n", id);
+				//Adjust bg struct accordingly//
+				int old_counter = bg.counter;
+				int t;
+				int new_counter = 0;
+				for(t=0;t<bg.counter;t++)
+				{
+					if(bg.indexes[t]!=id)
+					{
+						bg.indexes[new_counter] = bg.indexes[t];
+						new_counter++;
+					}
+
+				}
+				bg.counter = new_counter;
 				return;
 			}
 		}
@@ -413,6 +465,10 @@ int main(int argc, char *argv[])
 			else if(strcmp(specific_parsed[0],"killchild")==0)
 			{
 				killChildHandler(specific_parsed);
+			}
+			else if(strcmp(specific_parsed[0],"jobs")==0 || strcmp(specific_parsed[0],"kjobs")==0||strcmp(specific_parsed[0],"fg")==0||strcmp(specific_parsed[0],"overkill")==0|| strcmp(specific_parsed[0],"quit")==0)
+			{
+				userDefinedCommands(specific_parsed);
 			}
 			else
 			{
