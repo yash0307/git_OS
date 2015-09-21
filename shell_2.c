@@ -12,6 +12,7 @@
 #include<signal.h>
 #include<fcntl.h>
 #include<sys/wait.h>
+#include <signal.h>
 
 /////DECLARE STRUCTS HERE/////
 typedef struct {
@@ -71,6 +72,11 @@ void checkBg(char command_parsed[100][100], int command_counter)
 void resetExistsBg()
 {
 	bg.exists_in_command = FALSE;
+}
+void appendIndexBg(int process_id)
+{
+	bg.indexes[bg.counter] = process_id;
+	bg.counter++;
 }
 /////Ending, Background process/////
 /////Need to check for redirection in command given.
@@ -291,11 +297,12 @@ int main(int argc, char *argv[])
 
 	initializeRe();
 
+	initializeBg();
+
 	while(1)
 	{
 		generateShellPrompt();
 
-		initializeBg();
 
 		gets(command);
 
@@ -485,7 +492,6 @@ int main(int argc, char *argv[])
 				{
 					arg[t] = '\0';
 				}
-
 				//If command to be execute is !bg process
 				if(bg.exists_in_command==FALSE)
 				{
@@ -494,6 +500,7 @@ int main(int argc, char *argv[])
 				//If command to be executed is bg process
 				else if(bg.exists_in_command==TRUE)
 				{
+					appendIndexBg(pid);
 					printf("BG Process pid:%d\n", pid);
 				}
 			}
