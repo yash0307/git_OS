@@ -54,7 +54,7 @@ void initializeBg()
 	int i;
 	for(i=0;i<200;i++)
 	{
-		bg.indexes = 0;
+		bg.indexes[i] = 0;
 	}
 }
 void checkBg(char command_parsed[100][100], int command_counter)
@@ -62,7 +62,7 @@ void checkBg(char command_parsed[100][100], int command_counter)
 	int i;
 	for(i=0;i<command_counter;i++)
 	{
-		if(strcpy(command_parsed[i], "&")==0)
+		if(strcmp(command_parsed[i], "&")==0)
 		{
 			bg.exists_in_command = TRUE;
 		}
@@ -294,7 +294,7 @@ int main(int argc, char *argv[])
 	while(1)
 	{
 		generateShellPrompt();
-		
+
 		initializeBg();
 
 		gets(command);
@@ -335,7 +335,7 @@ int main(int argc, char *argv[])
 			checkReIn(specific_parsed, specific_counter);
 			checkReOut(specific_parsed, specific_counter);
 			checkAppend(specific_parsed, specific_counter);
-			
+
 			//Check Background process.
 			checkBg(specific_parsed, specific_counter);
 
@@ -365,7 +365,7 @@ int main(int argc, char *argv[])
 
 				//If re.r_in is False and re.r_out is false then
 				//give values to arg here itself.
-				if(re.r_in==FALSE && re.r_out==FALSE)
+				if(re.r_in==FALSE && re.r_out==FALSE && bg.exists_in_command==FALSE)
 				{
 					for(t=0;t<specific_counter;t++)
 					{
@@ -378,6 +378,7 @@ int main(int argc, char *argv[])
 					perror("ERROR: in forking new process\n");
 					exit(1);
 				}
+
 
 				else if(pid==0)
 				{
@@ -426,7 +427,7 @@ int main(int argc, char *argv[])
 						{
 							fd_out = open(re.file_output, O_WRONLY | O_APPEND);
 							if(fd_out <0)
-							perror("ERROR : can't create Output file\n");
+								perror("ERROR : can't create Output file\n");
 						}
 						dup2(fd_out, STDOUT_FILENO);
 						close(fd_out);
@@ -449,25 +450,55 @@ int main(int argc, char *argv[])
 							}
 						}
 					}
-					
 
+					//Check if there is background process.
+					if(bg.exists_in_command==TRUE)
+					{
+						for(t=0;t<specific_counter;t++)
+						{
+							if(strcmp(specific_parsed[t],"&")==0)
+							{
+								break;
+							}
+							else
+							{
+								arg[t] = specific_parsed[t];
+							}
+						}
+					}
 					int ret;
+					if(bg.exists_in_command==TRUE)
+					{
+						setpgid(0, 0);
+					}
 					ret = execvp(arg[0], arg);
 					if(ret < 0)
 					{
-						perror("ERROR : in execvp()\n");
+						perror("ERROR : in execvp() -- ");
 						exit(1);
 					}
 					exit(0);
 				}
+
+				//Need to reset arg vars each time.
 				for(t=0;t<specific_counter;t++)
 				{
 					arg[t] = '\0';
 				}
-				wait();
+
+				//If command to be execute is !bg process
+				if(bg.exists_in_command==FALSE)
+				{
+					wait(NULL);
+				}
+				//If command to be executed is bg process
+				else if(bg.exists_in_command==TRUE)
+				{
+					printf("BG Process pid:%d\n", pid);
+				}
 			}
 			//Reset bg.exists_in_command.
-			resetExistBg();
+			resetExistsBg();
 			//Reset redirection instance everytime.
 			resetRe();
 		}
