@@ -42,6 +42,39 @@ Redirect re;
 Background bg;
 #define TRUE 1
 #define FALSE 0
+/////Own Kill Child handler /////
+/////Takes input as a [killchild pid]
+/////Checks if pid exists in processes raised by shell
+/////If yes kill the child
+void killChildHandler(char command_parsed[100][100])
+{
+	int i;
+	int flag=0;
+	int id = atoi(command_parsed[1]);
+	for(i=0;i<bg.counter;i++)
+	{
+		if(bg.indexes[i]==id)
+		{
+			flag=1;
+			int ret = kill(id, SIGKILL);
+			if(ret!=0)
+			{
+				perror("Unable to kill child process");
+				return;
+			}
+			else if(ret==0)
+			{
+				printf("Killed Child Process with pid : %d\n", id);
+				return;
+			}
+		}
+	}
+	if(flag==0)
+	{
+		printf("Child Process with pid : %d not created by this shell instance\n",id);
+		return;
+	}
+}
 /////Need to check for background process.
 /////If there are background processes
 /////Maintian them in indexes.
@@ -355,7 +388,11 @@ int main(int argc, char *argv[])
 			{
 				return 0;
 			}
-
+			//Writing own handler to kill child processes//
+			else if(strcmp(specific_parsed[0],"killchild")==0)
+			{
+				killChildHandler(specific_parsed);
+			}
 			else
 			{
 
