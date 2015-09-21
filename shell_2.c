@@ -96,6 +96,23 @@ void userDefinedCommands(char command_parsed[100][100])
 			printf("PID : %d\n", bg.indexes[i]);
 		}
 	}
+	else if(strcmp(command_parsed[0],"overkill")==0)
+	{
+		int i;
+		for(i=0;i<bg.counter;i++)
+		{
+			int ret = kill(bg.indexes[i], SIGKILL);
+			if(ret!=0)
+			{
+				perror("Unable to kill child process");
+				return;
+			}
+			else
+			{
+				printf("Killed Child Process with pid : %d\n",bg.indexes[i]);
+			}
+		}
+	}
 }
 /////Own Kill Child handler /////
 /////Takes input as a [killchild pid]
@@ -114,7 +131,7 @@ void killChildHandler(char command_parsed[100][100])
 			int ret = kill(id, SIGKILL);
 			if(ret!=0)
 			{
-				perror("Unable to kill child process");
+				perror("Unable to kill child process\n");
 				return;
 			}
 			else if(ret==0)
